@@ -3516,7 +3516,6 @@ function Library:CreateWindow(...)
         local FadeTime = Config.MenuFadeTime;
         Fading = true;
         Toggled = (not Toggled);
-        ModalElement.Modal = Toggled;
 
         if Toggled then
             -- A bit scuffed, but if we're going from not toggled -> toggled we want to show the frame immediately so that the fade is visible.
