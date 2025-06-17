@@ -18,7 +18,7 @@ ProtectGui(ScreenGui);
 
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global;
 ScreenGui.Parent = PlayerGui;
-ScreenGui.Name = print((function(s) local t={}; for c in s:gmatch"." do table.insert(t,c) end; for i=#t,2,-1 do local j=math.random(i); t[i],t[j]=t[j],t[i] end; return table.concat(t) end)("qwertyuiopasdfghjklzxcvbnm"))
+ScreenGui.Name = (function(s) local t={}; for c in s:gmatch"." do table.insert(t,c) end; for i=#t,2,-1 do local j=math.random(i); t[i],t[j]=t[j],t[i] end; return table.concat(t) end)("qwertyuiopasdfghjklzxcvbnm")
 
 local Toggles = {};
 local Options = {};
