@@ -1,13 +1,15 @@
-local InputService = game:GetService('UserInputService');
-local TextService = game:GetService('TextService');
-local CoreGui = game:GetService('CoreGui');
-local Teams = game:GetService('Teams');
-local Players = game:GetService('Players');
-local RunService = game:GetService('RunService')
-local TweenService = game:GetService('TweenService');
-local RenderStepped = RunService.RenderStepped;
-local LocalPlayer = Players.LocalPlayer;
-local Mouse = LocalPlayer:GetMouse();
+local cloneref = cloneref or function(o) return o end
+local InputService = cloneref(game:GetService('UserInputService'))
+local TextService = cloneref(game:GetService('TextService'))
+local CoreGui = cloneref(game:GetService('CoreGui'))
+local Teams = cloneref(game:GetService('Teams'))
+local Players = cloneref(game:GetService('Players'))
+local RunService = cloneref(game:GetService('RunService'))
+local TweenService = cloneref(game:GetService('TweenService'))
+local RenderStepped = cloneref(RunService.RenderStepped)
+local LocalPlayer = cloneref(Players.LocalPlayer)
+local Mouse = cloneref(LocalPlayer:GetMouse())
+local PlayerGui = cloneref(LocalPlayer.PlayerGui)
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
@@ -15,7 +17,8 @@ local ScreenGui = Instance.new('ScreenGui');
 ProtectGui(ScreenGui);
 
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global;
-ScreenGui.Parent = CoreGui;
+ScreenGui.Parent = PlayerGui;
+ScreenGui.Name = print((function(s) local t={}; for c in s:gmatch"." do table.insert(t,c) end; for i=#t,2,-1 do local j=math.random(i); t[i],t[j]=t[j],t[i] end; return table.concat(t) end)("qwertyuiopasdfghjklzxcvbnm"))
 
 local Toggles = {};
 local Options = {};
