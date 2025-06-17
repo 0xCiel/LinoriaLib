@@ -1281,7 +1281,7 @@ do
             end;
         end);
 
-        Library:GiveSignal(InputService.InputBegan:Connect(function(Input, IsTyping)
+        Library:GiveSignal(InputService.InputBegan:Connect(function(Input, IsTyping) 
             if IsTyping then return end
             if (not Picking) then
                 if KeyPicker.Mode == 'Toggle' then
@@ -1339,70 +1339,85 @@ local BaseGroupbox = {};
 do
     local Funcs = {};
 
-    function Funcs:AddBlank(Size)
-        local Groupbox = self;
-        local Container = Groupbox.Container;
+function Funcs:AddBlank(Size)
+    local Groupbox = self;
+    local Container = Groupbox.Container;
 
-        Library:Create('Frame', {
-            BackgroundTransparency = 1;
-            Size = UDim2.new(1, 0, 0, Size);
-            ZIndex = 1;
-            Parent = Container;
-        });
-    end;
+    local BlankFrame = Library:Create('Frame', {
+        BackgroundTransparency = 1;
+        Size = UDim2.new(1, 0, 0, Size);
+        ZIndex = 1;
+        Parent = Container;
+    });
 
-    function Funcs:AddLabel(Text, DoesWrap)
-        local Label = {};
+    return BlankFrame
+end
 
-        local Groupbox = self;
-        local Container = Groupbox.Container;
+function Funcs:AddLabel(Text, DoesWrap)
+    local Label = {}
 
-        local TextLabel = Library:CreateLabel({
-            Size = UDim2.new(1, -4, 0, 15);
-            TextSize = 14;
-            Text = Text;
-            TextWrapped = DoesWrap or false,
-            TextXAlignment = Enum.TextXAlignment.Left;
-            ZIndex = 5;
-            Parent = Container;
-        });
+    local Groupbox = self
+    local Container = Groupbox.Container
+
+    local TextLabel = Library:CreateLabel({
+        Size = UDim2.new(1, -4, 0, 15);
+        TextSize = 14;
+        Text = Text;
+        TextWrapped = DoesWrap or false,
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex = 5;
+        AutoLocalize = false;
+        Parent = Container;
+    })
+
+    if DoesWrap then
+        local Y = select(2, Library:GetTextBounds(Text, Library.Font, 14, Vector2.new(TextLabel.AbsoluteSize.X, math.huge)))
+        TextLabel.Size = UDim2.new(1, -4, 0, Y)
+    else
+        Library:Create('UIListLayout', {
+            Padding = UDim.new(0, 4);
+            FillDirection = Enum.FillDirection.Horizontal;
+            HorizontalAlignment = Enum.HorizontalAlignment.Right;
+            SortOrder = Enum.SortOrder.LayoutOrder;
+            Parent = TextLabel;
+        })
+    end
+
+    Label.TextLabel = TextLabel
+    Label.Container = Container
+
+    function Label:SetText(Text)
+        TextLabel.Text = Text
 
         if DoesWrap then
             local Y = select(2, Library:GetTextBounds(Text, Library.Font, 14, Vector2.new(TextLabel.AbsoluteSize.X, math.huge)))
             TextLabel.Size = UDim2.new(1, -4, 0, Y)
-        else
-            Library:Create('UIListLayout', {
-                Padding = UDim.new(0, 4);
-                FillDirection = Enum.FillDirection.Horizontal;
-                HorizontalAlignment = Enum.HorizontalAlignment.Right;
-                SortOrder = Enum.SortOrder.LayoutOrder;
-                Parent = TextLabel;
-            });
         end
 
-        Label.TextLabel = TextLabel;
-        Label.Container = Container;
+        Groupbox:Resize()
+    end
 
-        function Label:SetText(Text)
-            TextLabel.Text = Text
+    local blank = Groupbox:AddBlank(5)
 
-            if DoesWrap then
-                local Y = select(2, Library:GetTextBounds(Text, Library.Font, 14, Vector2.new(TextLabel.AbsoluteSize.X, math.huge)))
-                TextLabel.Size = UDim2.new(1, -4, 0, Y)
-            end
+    function Label:Destroy()
+        TextLabel:Destroy()
+        if blank then blank:Destroy() end
+        Groupbox:Resize()
+    end
 
-            Groupbox:Resize();
-        end
+    function Label:SetColor(color)
+        TextLabel.TextColor3 = color
+    end
 
-        if (not DoesWrap) then
-            setmetatable(Label, BaseAddons);
-        end
+    if not DoesWrap then
+        setmetatable(Label, BaseAddons)
+    end
 
-        Groupbox:AddBlank(5);
-        Groupbox:Resize();
+    Groupbox:Resize()
 
-        return Label;
-    end;
+    return Label
+end
+
 
     function Funcs:AddButton(...)
         -- TODO: Eventually redo this
@@ -3516,50 +3531,6 @@ function Library:CreateWindow(...)
         local FadeTime = Config.MenuFadeTime;
         Fading = true;
         Toggled = (not Toggled);
-
-        if Toggled then
-            -- A bit scuffed, but if we're going from not toggled -> toggled we want to show the frame immediately so that the fade is visible.
-            Outer.Visible = true;
-
-            task.spawn(function()
-                -- TODO: add cursor fade?
-                local State = InputService.MouseIconEnabled;
-
-                local Cursor = Drawing.new('Triangle');
-                Cursor.Thickness = 1;
-                Cursor.Filled = true;
-                Cursor.Visible = true;
-
-                local CursorOutline = Drawing.new('Triangle');
-                CursorOutline.Thickness = 1;
-                CursorOutline.Filled = false;
-                CursorOutline.Color = Color3.new(0, 0, 0);
-                CursorOutline.Visible = true;
-
-                while Toggled and ScreenGui.Parent do
-                    InputService.MouseIconEnabled = false;
-
-                    local mPos = InputService:GetMouseLocation();
-
-                    Cursor.Color = Library.AccentColor;
-
-                    Cursor.PointA = Vector2.new(mPos.X, mPos.Y);
-                    Cursor.PointB = Vector2.new(mPos.X + 16, mPos.Y + 6);
-                    Cursor.PointC = Vector2.new(mPos.X + 6, mPos.Y + 16);
-
-                    CursorOutline.PointA = Cursor.PointA;
-                    CursorOutline.PointB = Cursor.PointB;
-                    CursorOutline.PointC = Cursor.PointC;
-
-                    RenderStepped:Wait();
-                end;
-
-                InputService.MouseIconEnabled = State;
-
-                Cursor:Remove();
-                CursorOutline:Remove();
-            end);
-        end;
 
         for _, Desc in next, Outer:GetDescendants() do
             local Properties = {};
