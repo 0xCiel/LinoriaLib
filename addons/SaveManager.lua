@@ -54,7 +54,6 @@ local SaveManager = {} do
 				end
 			end,
 		},
-
 		Input = {
 			Save = function(idx, object)
 				return { type = 'Input', idx = idx, text = object.Value }
@@ -79,32 +78,30 @@ local SaveManager = {} do
 	end
 
 	function SaveManager:Save(name)
-		if (not name) then
-			return false, 'no config file is selected'
+		if not name then
+			self.Library:Notify('No config file selected')
+			return false
 		end
 
 		local fullPath = self.Folder .. '/settings/' .. name .. '.json'
-
-		local data = {
-			objects = {}
-		}
+		local data = { objects = {} }
 
 		for idx, toggle in next, Toggles do
-			if self.Ignore[idx] then continue end
-
-			table.insert(data.objects, self.Parser[toggle.Type].Save(idx, toggle))
+			if not self.Ignore[idx] then
+				table.insert(data.objects, self.Parser[toggle.Type].Save(idx, toggle))
+			end
 		end
 
 		for idx, option in next, Options do
-			if not self.Parser[option.Type] then continue end
-			if self.Ignore[idx] then continue end
-
-			table.insert(data.objects, self.Parser[option.Type].Save(idx, option))
+			if self.Parser[option.Type] and not self.Ignore[idx] then
+				table.insert(data.objects, self.Parser[option.Type].Save(idx, option))
+			end
 		end	
 
-		local success, encoded = pcall(httpService.JSONEncode, httpService, data)
-		if not success then
-			return false, 'failed to encode data'
+		local encoded = httpService:JSONEncode(data)
+		if not encoded then
+			self.Library:Notify('Failed to encode data')
+			return false
 		end
 
 		writefile(fullPath, encoded)
@@ -112,19 +109,26 @@ local SaveManager = {} do
 	end
 
 	function SaveManager:Load(name)
-		if (not name) then
-			return false, 'no config file is selected'
+		if not name then
+			self.Library:Notify('No config file selected')
+			return false
 		end
 		
 		local file = self.Folder .. '/settings/' .. name .. '.json'
-		if not isfile(file) then return false, 'invalid file' end
+		if not isfile(file) then
+			self.Library:Notify('Invalid file')
+			return false
+		end
 
-		local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
-		if not success then return false, 'decode error' end
+		local decoded = httpService:JSONDecode(readfile(file))
+		if not decoded then
+			self.Library:Notify('Decode error')
+			return false
+		end
 
 		for _, option in next, decoded.objects do
 			if self.Parser[option.type] then
-				task.spawn(function() self.Parser[option.type].Load(option.idx, option) end) -- task.spawn() so the config loading wont get stuck.
+				task.spawn(function() self.Parser[option.type].Load(option.idx, option) end)
 			end
 		end
 
@@ -133,8 +137,8 @@ local SaveManager = {} do
 
 	function SaveManager:IgnoreThemeSettings()
 		self:SetIgnoreIndexes({ 
-			"BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor", -- themes
-			"ThemeManager_ThemeList", 'ThemeManager_CustomThemeList', 'ThemeManager_CustomThemeName', -- themes
+			"BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor",
+			"ThemeManager_ThemeList", 'ThemeManager_CustomThemeList', 'ThemeManager_CustomThemeName',
 		})
 	end
 
@@ -155,17 +159,15 @@ local SaveManager = {} do
 
 	function SaveManager:RefreshConfigList()
 		local list = listfiles(self.Folder .. '/settings')
-
 		local out = {}
+
 		for i = 1, #list do
 			local file = list[i]
 			if file:sub(-5) == '.json' then
-				-- i hate this but it has to be done ...
-
 				local pos = file:find('.json', 1, true)
 				local start = pos
-
 				local char = file:sub(pos, pos)
+
 				while char ~= '/' and char ~= '\\' and char ~= '' do
 					pos = pos - 1
 					char = file:sub(pos, pos)
@@ -187,23 +189,20 @@ local SaveManager = {} do
 	function SaveManager:LoadAutoloadConfig()
 		if isfile(self.Folder .. '/settings/autoload.txt') then
 			local name = readfile(self.Folder .. '/settings/autoload.txt')
-
-			local success, err = self:Load(name)
-			if not success then
-				return self.Library:Notify('Failed to load autoload config: ' .. err)
+			local success = self:Load(name)
+			if success then
+				self.Library:Notify(string.format('Auto loaded config %q', name))
 			end
-
-			self.Library:Notify(string.format('Auto loaded config %q', name))
 		end
 	end
 
-
 	function SaveManager:BuildConfigSection(tab)
-		assert(self.Library, 'Must set SaveManager.Library')
+		if not self.Library then
+			error('Must set SaveManager.Library')
+		end
 
 		local section = tab:AddRightGroupbox('Configuration')
-
-		section:AddInput('SaveManager_ConfigName',    { Text = 'Config name' })
+		section:AddInput('SaveManager_ConfigName', { Text = 'Config name' })
 		section:AddDropdown('SaveManager_ConfigList', { Text = 'Config list', Values = self:RefreshConfigList(), AllowNull = true })
 
 		section:AddDivider()
@@ -212,38 +211,32 @@ local SaveManager = {} do
 			local name = Options.SaveManager_ConfigName.Value
 
 			if name:gsub(' ', '') == '' then 
-				return self.Library:Notify('Invalid config name (empty)', 2)
+				self.Library:Notify('Invalid config name (empty)', 2)
+				return
 			end
 
-			local success, err = self:Save(name)
-			if not success then
-				return self.Library:Notify('Failed to save config: ' .. err)
+			local success = self:Save(name)
+			if success then
+				self.Library:Notify(string.format('Created config %q', name))
+				Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
+				Options.SaveManager_ConfigList:SetValue(nil)
 			end
+		end)
 
-			self.Library:Notify(string.format('Created config %q', name))
-
-			Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
-			Options.SaveManager_ConfigList:SetValue(nil)
-		end):AddButton('Load config', function()
+		section:AddButton('Load config', function()
 			local name = Options.SaveManager_ConfigList.Value
-
-			local success, err = self:Load(name)
-			if not success then
-				return self.Library:Notify('Failed to load config: ' .. err)
+			local success = self:Load(name)
+			if success then
+				self.Library:Notify(string.format('Loaded config %q', name))
 			end
-
-			self.Library:Notify(string.format('Loaded config %q', name))
 		end)
 
 		section:AddButton('Overwrite config', function()
 			local name = Options.SaveManager_ConfigList.Value
-
-			local success, err = self:Save(name)
-			if not success then
-				return self.Library:Notify('Failed to overwrite config: ' .. err)
+			local success = self:Save(name)
+			if success then
+				self.Library:Notify(string.format('Overwrote config %q', name))
 			end
-
-			self.Library:Notify(string.format('Overwrote config %q', name))
 		end)
 
 		section:AddButton('Refresh list', function()
